@@ -1,0 +1,45 @@
+# Eiffel build artifacts
+EIFGENs/
+Documentation/
+
+# Compiled files
+*.melted
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Backup files
+*.swp
+*.bak
+*~
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+*.epr
+*.log
+
+# ---------------------------------------------------------------------------
+# Model weights and installer payloads. None of this is source: the weights come
+# out of a private training pipeline and the setup executable is a build product.
+# GitHub refuses any file over 100 MB, and these would be the first to hit it.
+# ---------------------------------------------------------------------------
+
+# Model weights, in any format
+*.bin
+*.gguf
+
+# The runnable distributable (RixGPT.exe + model.bin)
+bin/
+
+# Inno Setup staging folder and its output
+installer/src/
+installer/*-Setup.exe

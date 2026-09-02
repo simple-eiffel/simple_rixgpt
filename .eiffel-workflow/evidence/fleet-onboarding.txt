@@ -1,0 +1,252 @@
+# Fleet Onboarding Evidence - simple_rixgpt
+# Date: 2026-09-02
+# Project: D:\prod\simple_rixgpt
+# Purpose: bring simple_rixgpt onto the simple_* fleet pattern and publish it.
+#          RixGPT was built and shipped as a Windows installer on 2026-07-14
+#          and had never been under git.
+#
+# This is an APPLICATION, not a library. The fleet's application shape is
+# simple_reel: README, app/ and src/ split, an app target and a tests target.
+# The library-fleet documents (CHANGELOG, LICENSE, package.json, docs/ site)
+# come from simple_json and simple_bnf.
+
+================================================================================
+1. BUILD COMMAND
+================================================================================
+
+    cd /d/prod/simple_rixgpt
+    /d/prod/ec.sh release -config simple_rixgpt.ecf -target simple_rixgpt_app
+
+ec.sh expands `release' into two finalizations:
+
+    ec.exe -batch -config simple_rixgpt.ecf -target simple_rixgpt_app -finalize -c_compile
+    ec.exe -batch -config simple_rixgpt.ecf -target simple_rixgpt_app -finalize -keep -c_compile
+
+Run in the FOREGROUND, blocking. ec.sh refuses -c_compile passed directly and
+refuses W_code modes, so `release' is the whole command.
+
+The application was NOT run. RixGPT needs model.bin, a 21 MB weights payload
+that is deliberately not in this repository, so a compile is the acceptance
+here and is stated as such in the README.
+
+Before the final build the target's EIFGENs subtree was removed, so this is a
+clean compile and not an incremental one:
+
+    rm -rf EIFGENs/simple_rixgpt_app
+
+================================================================================
+2. BUILD OUTPUT (final clean build)
+================================================================================
+
+Build start (UTC):  2026-09-02 12:41:29   (epoch 1788352889)
+
+Head:
+
+    === RELEASE MODE (both lean and fat) ===
+    --- Building LEAN binary (no DBC) ---
+    Running: ec.exe -batch -config simple_rixgpt.ecf -target simple_rixgpt_app -finalize -c_compile
+    Eiffel Compilation Manager
+    Version 25.02.9.8732 - win64
+
+    Degree 6: Examining System
+    Degree 5: Parsing Classes
+    Degree 4: Analyzing Inheritance
+    Degree 3: Checking Types
+    Degree 2: Generating Byte Code
+    Degree -2: Constructing Polymorphic Table
+    Degree -3: Generating Optimized Code
+    System Recompiled.
+    Preparing C compilation using Microsoft Visual Studio 2022 VC++ (17.0)...
+
+Tail:
+
+    C compilation completed
+    Event logged.
+
+    [CLI] Closing oracle...
+    [CLI] Done.
+    OK Built: EIFGENs/simple_rixgpt_app/F_code/simple_rixgpt.exe (1s ago)
+    OK Lean binary restored to F_code
+    OK DBC binary: EIFGENs/simple_rixgpt_app/F_code/simple_rixgpt_dbc.exe
+    === RELEASE COMPLETE ===
+
+Process exit code: 0
+Build log length: 144 lines
+
+================================================================================
+3. STALE-EXE CHECK
+================================================================================
+
+ec.sh leaves a stale executable behind on a compile error, so the timestamp is
+checked against the moment the build started rather than trusting the exit code.
+
+    stat -c '%Y %y %n' EIFGENs/simple_rixgpt_app/F_code/*.exe
+
+    build start epoch : 1788352889   (2026-09-02 12:41:29 UTC)
+    lean exe mtime    : 1788352912   (2026-09-02 08:41:52.534 -0400)
+    dbc  exe mtime    : 1788352912   (2026-09-02 08:41:52.245 -0400)
+    both mtime > start: YES  (+23s)
+
+Note the naming: `release' ends by renaming the finalized binaries, so F_code
+holds simple_rixgpt_lean.exe and simple_rixgpt_dbc.exe rather than a plain
+simple_rixgpt.exe. The lean binary is 1,427,968 bytes - byte-for-byte the size
+of the shipped bin/RixGPT.exe, which confirms the shipped program is this
+target's lean build.
+
+================================================================================
+4. WARNING / ERROR GREP
+================================================================================
+
+    grep -inE '(^|[^a-z])(error|warning)' rixgpt_build.log \
+        | grep -viE 'Resource Compiler|warning="warning"'
+    (no output)
+
+Zero errors, zero warnings - the fleet policy. Nothing had to be repaired to
+reach it; the code compiled clean as written in July 2026.
+
+The two filtered patterns are not findings: "Microsoft (R) Windows (R) Resource
+Compiler" is a banner line, and warning="warning" is the ECF option element
+that turns warnings ON.
+
+================================================================================
+5. TESTS
+================================================================================
+
+    rm -rf EIFGENs/simple_rixgpt_tests
+    /d/prod/ec.sh test -config simple_rixgpt.ecf -target simple_rixgpt_tests
+    ./EIFGENs/simple_rixgpt_tests/F_code/simple_rixgpt.exe
+
+    Running simple_rixgpt tests...
+
+      PASS: RIXGPT_MODEL compiles into the system
+      PASS: RIXGPT_APP compiles into the system
+
+      ========================
+      Results: 2 passed, 0 failed
+      ALL TESTS PASSED
+      (compile proof only - generation needs model.bin, which is not in this repository)
+
+    exit 0, zero warnings, log 72 lines.
+
+This is a COMPILE PROOF and is labeled as one everywhere it appears - in the
+class note, in the runner's own output, in the README and in the CHANGELOG.
+
+Why it is not more than that: RIXGPT_MODEL has exactly one creation procedure,
+`make (a_path: STRING)', and it takes the path of a RIXG weights file. Every
+other feature of the class is either feature {NONE} or requires a loaded model.
+The weights are a build payload from a private training pipeline and are not in
+this repository, so there is nothing to exercise. A synthetic model.bin was
+considered and rejected: a fabricated 4-dimension model would prove that the
+header parser reads a file this same session wrote, and nothing about the real
+weights.
+
+What the target does prove is real: declaring a local of a class puts that class
+in the system, so RIXGPT_MODEL and RIXGPT_APP are both fully type-checked and
+finalized by this target. That is the check that breaks first when the engine is
+edited.
+
+The fleet's application exemplar, simple_reel, carries a hand-rolled TEST_APP
+with a check_that/passed/failed runner rather than simple_testing + TEST_SET_BASE.
+This runner follows that shape, so the two applications match.
+
+================================================================================
+6. STUB DETECTION
+================================================================================
+
+Scope: src/ and app/ (production code).
+
+    stub() calls                 0
+    TODO / FIXME / XXX / HACK    0
+    empty feature bodies         0
+    unimplemented externals      0
+
+    EXIT: PASS (0 issues)
+
+No defects were found and none were fixed. The behavior of the shipped program
+is unchanged by this pass.
+
+================================================================================
+7. FILE FORMAT VERIFIED, NOT ASSUMED
+================================================================================
+
+The README documents the RIXG header. Rather than describe it from the loader
+alone, the header of the shipped bin/model.bin was read back and the two agree:
+
+    magic                 RIXG
+    format version        2
+    dtype                 1  (fp16)
+    n_layer               6
+    n_head                6
+    n_embd                384   (head_dim 64)
+    vocab_size            316
+    block_size            256
+    vocab count           316
+
+    file size             21,735,700 bytes
+    header size           1,300 bytes  (4 + 4 + 4 + 5*4 + 4 + 316*4)
+    weight bytes          21,734,400
+    fp16 weights          10,867,200 exactly, no remainder
+
+10,867,200 weights is the "about 10.9 M parameters" of the description, and the
+clean division is independent confirmation that dtype 1 and vocab_size 316 were
+read correctly.
+
+================================================================================
+8. LINE ENDINGS
+================================================================================
+
+Every pre-existing file in this project is CRLF: src/rixgpt_model.e (418 lines),
+app/rixgpt_app.e (118), simple_rixgpt.ecf (30), simple_rixgpt.rc (6),
+installer/RixGPT.iss (47). Sibling repos simple_json, simple_bnf and
+simple_shaping are CRLF too and set core.autocrlf=true.
+
+Every file written or edited in this pass was normalized to CRLF with a Python
+bytes replace after the fact, and core.autocrlf=true is set on this repository
+to match its siblings.
+
+One trap worth recording: an inline Bash heredoc collapsed a doubled backslash,
+so the first ECF patch wrote  location=".<TAB>esting\"  instead of
+location=".\testing\". The repair was written to a script file that builds every
+backslash with chr(92) rather than spelling one in source. Check ECF cluster
+paths after any scripted edit.
+
+================================================================================
+9. GIT EXCLUSIONS - THE POINT OF THIS SECTION
+================================================================================
+
+.gitignore was written BEFORE the first `git add', and `git ls-files' was read
+afterwards to confirm. Nothing was deleted from disk; these are excluded from
+version control only.
+
+    bin/                          RixGPT.exe (1.4 MB) + model.bin (20.7 MB)
+    installer/src/                staging copy of both, plus the .bat and readme
+    installer/RixGPT-Setup.exe     20.8 MB compiled installer
+    *.bin, *.gguf                 model weights in any location
+    *.exe, *.dll, EIFGENs/, *.log  the usual build artifacts
+
+installer/RixGPT.iss is NOT excluded. It is source: it is the record of how the
+shipped installer is assembled, and it is the only such record.
+
+================================================================================
+10. FILES CREATED
+================================================================================
+
+    README.md
+    CHANGELOG.md
+    LICENSE
+    package.json
+    .gitignore                                     (simple_json's, plus section 9)
+    docs/index.html
+    docs/.nojekyll
+    docs/css/style.css                             (ecosystem stylesheet, from simple_bnf)
+    docs/images/logo.svg                           (ecosystem logo; label set to rixgpt)
+    testing/test_app.e                             (the compile proof)
+    .eiffel-workflow/evidence/fleet-onboarding.txt (this file)
+
+MODIFIED:
+
+    simple_rixgpt.ecf    added <description> and the simple_rixgpt_tests target
+
+NOT MODIFIED:
+
+    src/rixgpt_model.e, app/rixgpt_app.e, installer/RixGPT.iss, simple_rixgpt.rc

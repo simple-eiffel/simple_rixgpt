@@ -1,0 +1,9 @@
+{
+  "name": "simple_rixgpt",
+  "version": "0.1.0",
+  "description": "A character-level GPT whose entire forward pass is pure Eiffel: RIXG weights file, fp16 widening, KV-cached transformer inference and a console REPL, with no Python, no GPU and no C library beyond the Windows kernel",
+  "author": "Larry Rix",
+  "license": "MIT",
+  "category": "application",
+  "keywords": ["gpt", "transformer", "inference", "llm", "eiffel", "console"]
+}

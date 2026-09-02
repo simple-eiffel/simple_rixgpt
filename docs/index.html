@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>simple_rixgpt - A Character-Level GPT in Pure Eiffel</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="images/logo.svg" alt="simple_* logo" class="logo">
+        </div>
+        <h1>simple_rixgpt</h1>
+        <p class="tagline">A character-level GPT whose whole forward pass is pure Eiffel</p>
+        <div class="badges">
+            <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License">
+            <img src="https://img.shields.io/badge/Eiffel-25.02-purple.svg" alt="Eiffel 25.02">
+            <img src="https://img.shields.io/badge/DBC-Contracts-green.svg" alt="Design by Contract">
+        </div>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#status">Status</a></li>
+            <li><a href="#absent">Not Here</a></li>
+            <li><a href="#format">The RIXG File</a></li>
+            <li><a href="#inference">Inference</a></li>
+            <li><a href="#distributable">Distributable</a></li>
+            <li><a href="#testing">Testing</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_rixgpt">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="overview">
+            <h2>Overview</h2>
+            <p>
+                <strong>RixGPT</strong> is a character-level GPT whose entire forward pass is
+                pure Eiffel. <code>RIXGPT_MODEL</code> reads a self-describing
+                <code>RIXG</code> weights file through <code>RAW_FILE</code> and a
+                <code>MANAGED_POINTER</code>, widens its fp16 tensors into a
+                <code>REAL_64</code> buffer, and then generates one character at a time through
+                a KV-cached transformer &mdash; attention, GELU, layernorm and top-k sampling
+                all written out in Eiffel, with no Python, no GPU and no C library beyond
+                <code>KERNEL32.dll</code>. <code>RIXGPT_APP</code> wraps it in a console REPL:
+                type a few words, press Enter, and about 400 characters come back.
+            </p>
+            <p>
+                Part of the <a href="https://github.com/simple-eiffel">Simple Eiffel</a>
+                ecosystem.
+            </p>
+        </section>
+
+        <section id="status">
+            <h2>Status</h2>
+            <div class="contracts">
+                <p>
+                    <strong>0.1.0 &mdash; first public release.</strong> The program was built
+                    and shipped as a Windows installer on <strong>2026-07-14</strong>; this
+                    release brings its source under version control and onto the simple_* fleet
+                    pattern. Clean release build, zero errors, zero compiler warnings.
+                </p>
+                <p>
+                    Be clear about what this is. It is an <strong>inference engine</strong>, not
+                    a training framework: there is no backward pass, no optimizer and no
+                    tokenizer training here. It reads weights someone else produced and runs
+                    them forward.
+                </p>
+                <p>
+                    And be clear about what the model is. A 10.9-million-parameter character
+                    model imitates a <strong>style</strong>. It knows no facts. Every sentence it
+                    produces is invented, including the ones that sound like citations. The
+                    program says so itself on startup, and that warning is not decoration.
+                </p>
+            </div>
+        </section>
+
+        <section id="absent">
+            <h2>What Is Not in the Repository</h2>
+            <p>
+                The repository is the Eiffel front-end and nothing else. These are deliberately
+                absent, and excluded by <code>.gitignore</code>:
+            </p>
+            <table class="api-table">
+                <tr>
+                    <th>Absent</th>
+                    <th>What it is</th>
+                </tr>
+                <tr>
+                    <td><code>model.bin</code></td>
+                    <td>The trained weights, about 21 MB</td>
+                </tr>
+                <tr>
+                    <td><code>bin/</code></td>
+                    <td>The runnable folder &mdash; <code>RixGPT.exe</code> beside <code>model.bin</code></td>
+                </tr>
+                <tr>
+                    <td><code>installer/src/</code></td>
+                    <td>The Inno Setup staging folder, which holds a copy of both</td>
+                </tr>
+                <tr>
+                    <td><code>installer/RixGPT-Setup.exe</code></td>
+                    <td>The compiled installer, about 21 MB</td>
+                </tr>
+            </table>
+            <p>
+                The weights are produced by Larry Rix's private training pipeline, from his own
+                writing, and are not distributed here. <code>installer/RixGPT.iss</code>
+                <em>is</em> source and stays: it documents exactly how the shipped installer is
+                assembled. Without a <code>model.bin</code> the program builds and starts, prints
+                the path it could not find, and exits &mdash; which is the intended behavior, and
+                the reason a compile is the acceptance test this repository can offer.
+            </p>
+        </section>
+
+        <section id="format">
+            <h2>The RIXG Weights File</h2>
+            <p>
+                <code>RIXGPT_MODEL.make</code> reads a self-describing header, so one binary
+                serves any model shape. Everything is little-endian and every integer is 32-bit.
+            </p>
+            <table class="api-table">
+                <tr>
+                    <th>Bytes</th>
+                    <th>Field</th>
+                </tr>
+                <tr><td>4</td><td>Magic &mdash; the ASCII characters <code>RIXG</code></td></tr>
+                <tr><td>4</td><td>Format version</td></tr>
+                <tr><td>4</td><td><code>dtype</code>, present only when version &ge; 2: <code>0</code> = fp32, <code>1</code> = fp16</td></tr>
+                <tr><td>5 &times; 4</td><td><code>n_layer</code>, <code>n_head</code>, <code>n_embd</code>, <code>vocab_size</code>, <code>block_size</code></td></tr>
+                <tr><td>4</td><td>Vocabulary count, equal to <code>vocab_size</code></td></tr>
+                <tr><td><code>vocab_size</code> &times; 4</td><td>The Unicode code point of each vocabulary symbol &mdash; this <em>is</em> the tokenizer</td></tr>
+                <tr><td>rest</td><td>The weight tensors, back to back, in serialization order</td></tr>
+            </table>
+            <p>
+                There is no tensor-name table. The loader walks the same fixed order the trainer
+                wrote and records a float offset per tensor: token embedding, position embedding,
+                then for each block <code>ln1</code>, the fused QKV projection, the attention
+                output projection, <code>ln2</code>, and the two MLP layers, and finally the
+                closing layernorm. The output head is not stored separately &mdash; the logits are
+                read straight off the token embedding, so input and output embeddings are tied.
+            </p>
+            <p>
+                The shipped <code>model.bin</code> declares version 2, <code>dtype</code> 1
+                (fp16), 6 layers, 6 heads, <code>n_embd</code> 384 (head dimension 64), a
+                vocabulary of 316 code points and a context window of 256 characters &mdash;
+                10,867,200 weights, the 10.9 M of the description.
+            </p>
+        </section>
+
+        <section id="inference">
+            <h2>How the Inference Works</h2>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>fp16 by hand</h3>
+                    <p>Eiffel has no binary16 type, so <code>half_to_double</code> decodes the
+                    sign, exponent and mantissa of each 16-bit pattern arithmetically,
+                    subnormals included, into a <code>REAL_64</code> buffer read once at load
+                    time.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>One token at a time</h3>
+                    <p><code>forward</code> handles a single position and appends its keys and
+                    values to caches sized
+                    <code>n_layer &times; block_size &times; n_embd</code>. Prompt characters
+                    stream through the same path, so a continuation never re-runs attention over
+                    text it has already seen.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>Causal for free</h3>
+                    <p>Generation is strictly left-to-right and the cache only ever holds
+                    positions <code>0 .. pos</code>, so there is no mask to build. The loop
+                    simply stops at <code>pos</code>.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>GELU without a library</h3>
+                    <p><code>erf</code> is the Abramowitz &amp; Stegun 7.1.26 rational
+                    approximation, with error below 1.5 &times; 10<sup>&minus;7</sup>. That is
+                    what makes the exact GELU affordable in pure Eiffel.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>Sampling</h3>
+                    <p>Temperature scaling, a top-k floor found by partial selection sort,
+                    softmax, then an inverse-CDF draw from an xorshift32 stream. The app reseeds
+                    each turn from the clock, the prompt's hash and the turn number.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>Validated numerics</h3>
+                    <p>The engine was ported from a numpy reference which itself matches PyTorch
+                    to 6 &times; 10<sup>&minus;6</sup> on the logits.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="distributable">
+            <h2>Building and the Distributable</h2>
+<pre><code>cd /d/prod/simple_rixgpt
+/d/prod/ec.sh release -config simple_rixgpt.ecf -target simple_rixgpt_app</code></pre>
+            <p>
+                <code>release</code> finalizes twice and leaves both binaries in
+                <code>EIFGENs/simple_rixgpt_app/F_code/</code>:
+                <code>simple_rixgpt_lean.exe</code>, with assertions compiled out, is the one
+                that ships as <code>RixGPT.exe</code>; <code>simple_rixgpt_dbc.exe</code> keeps
+                the contracts in. The lean executable links against <code>KERNEL32.dll</code>
+                only.
+            </p>
+            <p>
+                <strong>A distributable is a folder, not a zip and not a single file.</strong>
+                It holds exactly two things, side by side, and you run it from a command prompt
+                in that folder:
+            </p>
+<pre><code>RixGPT\
+    RixGPT.exe        (the finalized lean binary, renamed)
+    model.bin         (the weights)
+
+cd /d D:\path\to\RixGPT
+RixGPT.exe</code></pre>
+            <p>
+                With no argument the program looks for <code>model.bin</code> in the current
+                directory, which is why the two files must sit together and why the folder is
+                the unit you copy. <code>installer/RixGPT.iss</code> builds that same folder as a
+                Windows installer, adding a <code>Start RixGPT.bat</code> wrapper that runs
+                <code>chcp 65001</code> first so em-dashes and Hebrew render in the console.
+            </p>
+        </section>
+
+        <section id="testing">
+            <h2>Testing</h2>
+<pre><code>/d/prod/ec.sh test -config simple_rixgpt.ecf -target simple_rixgpt_tests
+./EIFGENs/simple_rixgpt_tests/F_code/simple_rixgpt.exe</code></pre>
+            <p>
+                This is a <strong>compile proof, not behavioral coverage</strong>, and the test
+                file says so in its own class note. <code>RIXGPT_MODEL</code> has exactly one
+                creation procedure and it takes a path to a weights file, so nothing in the class
+                can be exercised without the weights this repository does not carry, and a
+                fabricated model would prove nothing about the real one. What the target does
+                prove is that both classes type-check and finalize &mdash; which is what breaks
+                first when the engine is edited.
+            </p>
+        </section>
+
+        <section id="documentation">
+            <h2>More</h2>
+            <ul class="doc-links">
+                <li><a href="https://github.com/simple-eiffel/simple_rixgpt/blob/main/README.md"><strong>README</strong></a> - the file format, the distributable rule, dependencies and layout</li>
+                <li><a href="https://github.com/simple-eiffel/simple_rixgpt/blob/main/CHANGELOG.md"><strong>Changelog</strong></a> - what 0.1.0 is, and the known limitations</li>
+                <li><a href="https://github.com/simple-eiffel/simple_rixqwen"><strong>simple_rixqwen</strong></a> - the sibling front-end, for a 3B model served by llama.cpp</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <p class="copyright">&copy; 2026 simple_* ecosystem. MIT License.</p>
+        <p>
+            <a href="https://github.com/simple-eiffel/simple_rixgpt">GitHub</a> |
+            <a href="https://github.com/simple-eiffel">Simple Eiffel</a>
+        </p>
+    </footer>
+</body>
+</html>
