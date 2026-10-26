@@ -41,6 +41,7 @@ feature {NONE} -- Initialization
 			cli.add_option_with_default ("t|trace", "Print the training loss every N steps (0 = off)", "N", "0")
 			cli.add_option_with_default ("p|pool_mb", "GPU buffer pool limit in MB (0 = no pooling)", "N", "1024")
 			cli.add_option_with_default ("m|micro", "Micro-batches per step (gradients merged; same update, less memory)", "N", "2")
+			cli.add_option_with_default ("f|profile", "Profile N training steps on the GPU, print the kernel table, then stop (0 = train)", "N", "0")
 			cli.parse
 			if cli.help_requested then
 				cli.print_help
@@ -66,7 +67,11 @@ feature {NONE} -- Initialization
 					cfg.set_eval_batches (cli.integer_option_or_default ("eval_batches", 50))
 					trace_every := cli.integer_option_or_default ("trace", 0)
 					micro := cli.integer_option_or_default ("micro", 2).max (1)
-					train (f, corpus, cfg, cli.option_value_or_default ("out", "eiffel_ckpt.bin"))
+					if cli.integer_option_or_default ("profile", 0) > 0 then
+						profile (f, corpus, cfg, cli.integer_option_or_default ("profile", 0))
+					else
+						train (f, corpus, cfg, cli.option_value_or_default ("out", "eiffel_ckpt.bin"))
+					end
 				end
 			end
 		end
@@ -163,6 +168,67 @@ feature {NONE} -- Training
 			Result := Result / n
 			model.set_training (True)
 		end
+
+feature {NONE} -- Profiling
+
+	profile (f: SIMPLE_TENSOR; corpus: RIXGPT_CORPUS; cfg: RIXGPT_CONFIG; n: INTEGER)
+			-- 3 warm-up steps, then `n' steps with GPU kernel timing: wall time per step and
+			-- the kernel table (VULKAN_BACKEND.profile_report).
+		local
+			model: RIXGPT_TRAINABLE
+			opt: ADAMW_OPTIMIZER
+			l_train: TOKEN_BATCHER
+			k: INTEGER
+			t0: INTEGER_64
+		do
+			create model.make (f, cfg, create {TENSOR_RANDOM}.make (cfg.seed))
+			create opt.make (model.parameters, create {WARMUP_COSINE_SCHEDULE}.make (cfg.learning_rate, cfg.warmup, cfg.iterations, 0.1),
+				cfg.beta1, cfg.beta2, 1.0e-8, cfg.weight_decay)
+			create l_train.make (corpus.train_tokens, cfg.block_size, cfg.batch_size // micro, create {TENSOR_RANDOM}.make (cfg.seed + 1))
+			from k := 1 until k > 3 loop
+				one_step (model, opt, l_train)
+				k := k + 1
+			end
+			if attached {VULKAN_BACKEND} f.backend as v then
+				v.reset_profile
+				v.set_profiling (True)
+			end
+			t0 := now_ms
+			from k := 1 until k > n loop
+				one_step (model, opt, l_train)
+				k := k + 1
+			end
+			print ("[profile] " + n.out + " steps of " + cfg.batch_size.out + " x " + cfg.block_size.out + " (" + micro.out
+				+ " micro-batches): " + ((now_ms - t0) // n).out + " ms per step (wall, profiling on)%N")
+			if attached {VULKAN_BACKEND} f.backend as v then
+				v.set_profiling (False)
+				print (v.profile_report)
+			end
+		end
+
+	one_step (model: RIXGPT_TRAINABLE; opt: ADAMW_OPTIMIZER; b: TOKEN_BATCHER)
+			-- One training step of `micro' micro-batches, ending with the loss read back.
+		local
+			g: GRAD_STORE
+			l_loss: TENSOR
+			mb: INTEGER
+		do
+			create g.make
+			from mb := 1 until mb > micro loop
+				b.forth
+				l_loss := model.loss (b.batch.inputs, b.batch.targets)
+				g.merge (l_loss.backward)
+				last_loss := l_loss.item (0)
+				mb := mb + 1
+			end
+			if micro > 1 then
+				g.scale_all ((1.0 / micro).truncated_to_real)
+			end
+			g.clip_global_norm (1.0)
+			opt.step (g)
+		end
+
+	last_loss: REAL_32
 
 feature {NONE} -- Formatting
 
