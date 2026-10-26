@@ -25,9 +25,15 @@ Part of the [Simple Eiffel](https://github.com/simple-eiffel) ecosystem.
 > version control and onto the simple_* fleet pattern. Clean release build,
 > zero errors, zero compiler warnings.
 >
-> Be clear about what this is. It is **an inference engine**, not a training
-> framework: there is no backward pass, no optimizer and no tokenizer training
-> here. It reads weights someone else produced and runs them forward.
+> Be clear about what this is. `simple_rixgpt.ecf` is **an inference engine**,
+> with no backward pass and no optimizer. It reads a RIXG weights file and runs
+> it forward, with no dependencies beyond ISE's base and time.
+>
+> **Training (2026-10-26, `simple_rixgpt_train.ecf`)** is a separate ECF on top of
+> simple_tensor. It trains RixGPT from scratch in pure Eiffel, on the GPU through
+> Vulkan, and writes RIXG files this engine runs. On D:\rixgpt\rixgpt.py's recipe
+> it reaches train 1.510 / val 1.242 at step 500, against PyTorch's 1.511 / 1.201.
+> See **Training** below.
 >
 > And be clear about what the model is. A 10.9-million-parameter character model
 > imitates a **style**. It knows no facts. Every sentence it produces is
@@ -163,11 +169,42 @@ render in the console. Compile it with Inno Setup 6:
 That step needs `installer/src/` populated with the executable, the weights, the
 batch file and the readme — none of which are in this repository.
 
+## Training (simple_rixgpt_train.ecf)
+
+`rixgpt_trainer` is a port of rixgpt.py's `train()`:
+- **Same recipe:** corpus handling (UTF-8, Python's universal newlines, a sorted code-point vocabulary, a 90/10 split), model, initialization, AdamW (0.9, 0.99, weight decay 0.1), warmup-cosine learning rate, gradient clip 1.0.
+- **Same evaluation:** 50 batches per split with dropout off.
+- **Same log line.**
+
+It writes a RIXG checkpoint (f32) at every evaluation; RixGPT.exe runs it.
+
+```bash
+/d/prod/ec.sh release -config simple_rixgpt_train.ecf -target rixgpt_trainer
+PATH="$VULKAN_SDK/Bin:$PATH" ./EIFGENs/rixgpt_trainer/F_code/simple_rixgpt_train_lean.exe \
+    --data D:/rixgpt/corpus.txt --out D:/rixgpt/eiffel_ckpt.bin
+```
+
+| Option | Default | What |
+|---|---|---|
+| `--iters`, `--eval_every`, `--eval_batches` | 5000, 500, 50 | the recipe's schedule |
+| `--backend` | gpu | `cpu` works but is far slower |
+| `--micro` | 2 | micro-batches per step (gradients merged: the same update with less memory) |
+| `--trace N` | 0 | print the loss and gradient norm every N steps |
+| `--profile N` | 0 | time N steps on the GPU, print the per-kernel table, and stop |
+
+**Tests** (`simple_rixgpt_train_tests`; they need model.bin and corpus.txt on D:):
+- The corpus reproduces rixgpt.py's 316-character vocabulary.
+- model.bin's trained weights, loaded into the trainable model, give the same logits as `RIXGPT_MODEL`: within 2e-6 on the CPU oracle and 1e-5 on the GPU.
+- A tiny model overfits a short text.
+- A step at learning rate 0 changes nothing.
+
 ## Targets
 
 - `simple_rixgpt` — library target: `RIXGPT_MODEL` alone, usable from another ECF
 - `simple_rixgpt_app` — the console executable
 - `simple_rixgpt_tests` — a compile proof (see below)
+- `simple_rixgpt_train` (in `simple_rixgpt_train.ecf`) — the training library: `RIXGPT_TRAINABLE`, `RIXGPT_CORPUS`, `RIXG_FILE`
+- `rixgpt_trainer` and `simple_rixgpt_train_tests` — the trainer and its tests
 
 ## Testing
 

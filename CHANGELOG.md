@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Training in pure Eiffel, in a separate ECF (`simple_rixgpt_train.ecf`, on simple_tensor and its Vulkan backend): RIXGPT_CONFIG, RIXGPT_CORPUS, RIXGPT_BLOCK, RIXGPT_TRAINABLE, RIXG_FILE (read v2 f16/f32, write f32), and the `rixgpt_trainer` app (micro-batching, trace and profile options). The M2 gate is met: step 500 reaches train 1.510 / val 1.242, against PyTorch's 1.511 / 1.201.
+- `RIXGPT_MODEL.logits_for`: logits after a sequence of token ids (the training library's parity oracle).
+
 ## [0.1.0] - 2026-09-02
 
 First public release. RixGPT itself was written and shipped as a Windows
