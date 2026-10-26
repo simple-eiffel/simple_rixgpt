@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<system xmlns="http://www.eiffel.com/developers/xml/configuration/22" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration/22 http://www.eiffel.com/developers/xml/configuration/22/configuration.xsd" name="simple_rixgpt_train" uuid="8C4E2A61-5B7D-4F93-A1E0-3D2C6B9F7A58" library_target="simple_rixgpt_train">
+	<description>RixGPT trained in pure Eiffel (simple_tensor, GPU through simple_tensor_vulkan). Separate from simple_rixgpt.ecf so inference stays dependency-free.</description>
+	<target name="simple_rixgpt_train">
+		<root all_classes="true"/>
+		<file_rule>
+			<exclude>/EIFGENs$</exclude>
+			<exclude>/\..*$</exclude>
+		</file_rule>
+		<option warning="error" void_safety="all">
+			<assertions precondition="true" postcondition="true" invariant="true"/>
+		</option>
+		<setting name="total_order_on_reals" value="true"/>
+		<setting name="console_application" value="true"/>
+		<capability>
+			<concurrency support="scoop"/>
+			<void_safety support="all"/>
+		</capability>
+		<library name="base" location="$ISE_LIBRARY/library/base/base.ecf"/>
+		<library name="time" location="$ISE_LIBRARY/library/time/time.ecf"/>
+		<library name="simple_tensor" location="$SIMPLE_EIFFEL/simple_tensor/simple_tensor.ecf"/>
+		<library name="simple_tensor_vulkan" location="$SIMPLE_EIFFEL/simple_tensor/simple_tensor_vulkan.ecf"/>
+		<library name="simple_vulkan" location="$SIMPLE_EIFFEL/simple_vulkan/simple_vulkan.ecf"/>
+		<library name="simple_file" location="$SIMPLE_EIFFEL/simple_file/simple_file.ecf"/>
+		<cluster name="src" location="src/" recursive="true"/>
+		<cluster name="src_train" location="src_train/" recursive="true"/>
+	</target>
+	<target name="simple_rixgpt_train_tests" extends="simple_rixgpt_train">
+		<root class="TRAIN_TEST_APP" feature="make"/>
+		<option warning="error">
+			<assertions precondition="true" postcondition="true" check="true" invariant="true" loop="true" supplier_precondition="true"/>
+		</option>
+		<library name="simple_testing" location="$SIMPLE_EIFFEL/simple_testing/simple_testing.ecf"/>
+		<library name="testing" location="$ISE_LIBRARY/library/testing/testing.ecf"/>
+		<cluster name="testing_train" location="testing_train/" recursive="true"/>
+	</target>
+	<target name="rixgpt_trainer" extends="simple_rixgpt_train">
+		<root class="RIXGPT_TRAINER" feature="make"/>
+		<cluster name="app_train" location="app_train/" recursive="true"/>
+	</target>
+</system>

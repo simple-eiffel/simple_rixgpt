@@ -138,6 +138,27 @@ feature -- Generation
 			end
 		end
 
+feature -- Scoring
+
+	logits_for (a_ids: ARRAY [INTEGER]): ARRAY [REAL_64]
+			-- Logits over the vocabulary after feeding token ids `a_ids' from position 0
+			-- (the KV cache is rewritten). The training library's parity oracle.
+		require
+			non_empty: a_ids.count >= 1
+			fits: a_ids.count <= block_size
+			ids_valid: across a_ids as a all 0 <= a and a < vocab_size end
+		local
+			i: INTEGER
+		do
+			create Result.make_filled (0.0, 0, vocab_size - 1)
+			from i := 0 until i = a_ids.count loop
+				Result := forward (a_ids [a_ids.lower + i], i)
+				i := i + 1
+			end
+		ensure
+			sized: Result.count = vocab_size
+		end
+
 feature {NONE} -- Forward pass
 
 	forward (tok_id, pos: INTEGER): ARRAY [REAL_64]
