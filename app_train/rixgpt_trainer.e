@@ -201,7 +201,8 @@ feature {NONE} -- Profiling
 			opt: ADAMW_OPTIMIZER
 			l_train: TOKEN_BATCHER
 			k: INTEGER
-			t0: INTEGER_64
+			t0, l_flushes: INTEGER_64
+			l_wait: REAL_64
 		do
 			create model.make (f, cfg, create {TENSOR_RANDOM}.make (cfg.seed))
 			create opt.make (model.parameters, create {WARMUP_COSINE_SCHEDULE}.make (cfg.learning_rate, cfg.warmup, cfg.iterations, 0.1),
@@ -211,6 +212,10 @@ feature {NONE} -- Profiling
 				one_step (model, opt, l_train)
 				k := k + 1
 			end
+			if attached {VULKAN_BACKEND} f.backend as v then
+				l_flushes := v.context.flush_count
+				l_wait := v.context.wait_ms
+			end
 			t0 := now_ms
 			from k := 1 until k > n loop
 				one_step (model, opt, l_train)
@@ -218,6 +223,10 @@ feature {NONE} -- Profiling
 			end
 			print ("[profile] " + n.out + " steps: " + ((now_ms - t0) // n).out + " ms per step (wall, profiling off), loss "
 				+ last_loss.out + "%N")
+			if attached {VULKAN_BACKEND} f.backend as v then
+				print ("[profile] per step: " + ((v.context.flush_count - l_flushes) / n).out + " flushes, host waited "
+					+ ((v.context.wait_ms - l_wait) / n).truncated_to_integer.out + " ms for the GPU%N")
+			end
 			if attached {VULKAN_BACKEND} f.backend as v then
 				v.reset_profile
 				v.set_profiling (True)
