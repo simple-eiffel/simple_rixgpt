@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Training in pure Eiffel, in a separate ECF (`simple_rixgpt_train.ecf`, on simple_tensor and its Vulkan backend): RIXGPT_CONFIG, RIXGPT_CORPUS, RIXGPT_BLOCK, RIXGPT_TRAINABLE, RIXG_FILE (read v2 f16/f32, write f32), and the `rixgpt_trainer` app (micro-batching, trace and profile options). The M2 gate is met: step 500 reaches train 1.510 / val 1.242, against PyTorch's 1.511 / 1.201.
+- Training in pure Eiffel, in a separate ECF (`simple_rixgpt_train.ecf`, on simple_tensor and its Vulkan backend): RIXGPT_CONFIG, RIXGPT_CORPUS, RIXGPT_BLOCK, RIXGPT_TRAINABLE, RIXG_FILE (read v2 f16/f32, write f32), and the `rixgpt_trainer` app (micro-batching, trace and profile options). The M2 gate is met: step 500 reaches train 1.510 / val 1.242, against PyTorch's 1.511 / 1.201. The M3 gate is met: the full 5,000 steps end at train 0.727 / val 0.807, against PyTorch's 0.724 / 0.782. The trainer flushes its output after every progress line (a redirected log is block-buffered and otherwise looks dead).
 - `RIXGPT_MODEL.logits_for`: logits after a sequence of token ids (the training library's parity oracle).
 
 ## [0.1.0] - 2026-09-02

@@ -33,6 +33,8 @@ Part of the [Simple Eiffel](https://github.com/simple-eiffel) ecosystem.
 > simple_tensor. It trains RixGPT from scratch in pure Eiffel, on the GPU through
 > Vulkan, and writes RIXG files this engine runs. On D:\rixgpt\rixgpt.py's recipe
 > it reaches train 1.510 / val 1.242 at step 500, against PyTorch's 1.511 / 1.201.
+> The full 5,000 steps end at train 0.727 / val 0.807, against PyTorch's
+> 0.724 / 0.782, in about an hour (PyTorch, using bf16 tensor cores: 3 minutes).
 > See **Training** below.
 >
 > And be clear about what the model is. A 10.9-million-parameter character model

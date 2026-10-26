@@ -135,6 +135,8 @@ feature {NONE} -- Training
 					if not l_writer.last_error.is_empty then
 						print ("[warning] " + l_writer.last_error.to_string_8 + "%N")
 					end
+						-- Redirected stdout is block-buffered: flush, or a log looks dead for an hour.
+					io.output.flush
 				end
 					-- One step = `micro' micro-batches of batch_size // micro: each loss is a mean over
 					-- an equal share of the rows, so the mean of their gradients is the gradient of
@@ -156,6 +158,7 @@ feature {NONE} -- Training
 				if trace_every > 0 and then it \\ trace_every = 0 then
 					print ("  step " + it.out + " loss " + l_traced.out + " grad norm " + g.global_norm.out
 						+ " non-finite " + g.has_non_finite.out + "%N")
+					io.output.flush
 				end
 				g.clip_global_norm (cfg.clip)
 				opt.step (g)
