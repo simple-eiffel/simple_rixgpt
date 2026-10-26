@@ -36,6 +36,7 @@
 	</target>
 	<target name="rixgpt_trainer" extends="simple_rixgpt_train">
 		<root class="RIXGPT_TRAINER" feature="make"/>
+		<library name="simple_cli" location="$SIMPLE_EIFFEL/simple_cli/simple_cli.ecf"/>
 		<cluster name="app_train" location="app_train/" recursive="true"/>
 	</target>
 </system>

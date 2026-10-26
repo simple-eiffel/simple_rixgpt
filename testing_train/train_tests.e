@@ -97,6 +97,47 @@ feature -- Tests
 			assert ("learned the text: " + l_last.out, l_last < 0.3)
 		end
 
+	test_first_step_gpu
+			-- Recipe-size model on the GPU: one step at learning rate 0 (warmup) must leave every
+			-- parameter unchanged, and the same batch must give the same loss again.
+		local
+			c: RIXGPT_CONFIG
+			m: RIXGPT_TRAINABLE
+			opt: ADAMW_OPTIMIZER
+			corpus: RIXGPT_CORPUS
+			b: TOKEN_BATCHER
+			l1, l2: REAL_32
+			g: GRAD_STORE
+			l_before: ARRAYED_LIST [ARRAY [REAL_32]]
+			l_changed: INTEGER
+			l_after: ARRAY [REAL_32]
+		do
+			create corpus.make (gpu, Corpus_path)
+			create c.make_recipe (corpus.vocab_size)
+			create m.make (gpu, c, create {TENSOR_RANDOM}.make (1337))
+			create opt.make (m.parameters, create {WARMUP_COSINE_SCHEDULE}.make (1.0e-3, 150, 5000, 0.1), 0.9, 0.99, 1.0e-8, 0.1)
+			create b.make (corpus.train_tokens, c.block_size, c.batch_size // 2, create {TENSOR_RANDOM}.make (1338))
+			b.forth
+			create l_before.make (m.parameters.count)
+			across m.parameters as p loop l_before.extend (p.to_array) end
+			l1 := m.loss (b.batch.inputs, b.batch.targets).item (0)
+			g := m.loss (b.batch.inputs, b.batch.targets).backward
+			print ("      step 0: loss " + l1.out + ", grad norm " + g.global_norm.out + "%N")
+			g.clip_global_norm (1.0)
+			opt.step (g)
+			across m.parameters as p loop
+				l_after := p.to_array
+				if not across 1 |..| l_after.count as k all l_after [k] = l_before [@p.cursor_index] [k] end then
+					l_changed := l_changed + 1
+					print ("      changed at rate 0: " + m.named_parameters [@p.cursor_index].name + "%N")
+				end
+			end
+			l2 := m.loss (b.batch.inputs, b.batch.targets).item (0)
+			print ("      same batch after the step: loss " + l2.out + "%N")
+			assert ("no parameter changed at rate 0 (" + l_changed.out + " did)", l_changed = 0)
+			assert ("same loss", (l1 - l2).abs < 0.05)
+		end
+
 feature {NONE} -- Parity
 
 	parity (f: SIMPLE_TENSOR; a_label: STRING; a_tolerance: REAL_64)

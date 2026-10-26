@@ -21,6 +21,7 @@ feature {NONE} -- Initialization
 			run (agent t.test_parity_oracle, "trained weights: logits = RIXGPT_MODEL (oracle)")
 			run (agent t.test_parity_gpu, "trained weights: logits = RIXGPT_MODEL (GPU)")
 			run (agent t.test_tiny_overfit_gpu, "tiny RixGPT overfits a short text (GPU)")
+			run (agent t.test_first_step_gpu, "recipe model: a step at rate 0 changes nothing (GPU)")
 			print ("============================%NResults: " + passed.out + " passed, " + failed.out + " failed%N")
 		end
 
