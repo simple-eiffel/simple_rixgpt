@@ -43,6 +43,7 @@ feature {NONE} -- Initialization
 			cli.add_option_with_default ("u|budget_mb", "Collect after this many MB of new tensor memory", "N", "512")
 			cli.add_option_with_default ("m|micro", "Micro-batches per step (gradients merged; same update, less memory)", "N", "2")
 			cli.add_option_with_default ("f|profile", "Profile N training steps on the GPU, print the kernel table, then stop (0 = train)", "N", "0")
+			cli.add_flag ("x|mixed", "Mixed precision: products on the tensor cores (bf16 operands, f32 sums), like PyTorch's bf16 autocast")
 			cli.parse
 			if cli.help_requested then
 				cli.print_help
@@ -56,6 +57,14 @@ feature {NONE} -- Initialization
 					storage_budget.set_budget (cli.integer_option_or_default ("budget_mb", 512).to_integer_64 * 1024 * 1024)
 					if attached {VULKAN_BACKEND} f.backend as v then
 						v.context.set_pool_limit (cli.integer_option_or_default ("pool_mb", 8192).to_integer_64 * 1024 * 1024)
+						if cli.has_flag ("mixed") then
+							if v.can_mix_precision then
+								v.set_mixed_precision (True)
+								print ("[mixed] products on the tensor cores (bf16 operands, f32 sums)%N")
+							else
+								print ("[warning] --mixed ignored: no bf16 cooperative matrices on this GPU%N")
+							end
+						end
 					end
 				end
 				create corpus.make (f, cli.option_value_or_default ("data", ""))
