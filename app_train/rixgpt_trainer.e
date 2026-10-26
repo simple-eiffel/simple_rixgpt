@@ -39,7 +39,8 @@ feature {NONE} -- Initialization
 			cli.add_option_with_default ("b|eval_batches", "Batches per split per evaluation", "N", "50")
 			cli.add_option_with_default ("k|backend", "gpu or cpu", "NAME", "gpu")
 			cli.add_option_with_default ("t|trace", "Print the training loss every N steps (0 = off)", "N", "0")
-			cli.add_option_with_default ("p|pool_mb", "GPU buffer pool limit in MB (0 = no pooling)", "N", "1024")
+			cli.add_option_with_default ("p|pool_mb", "GPU buffer pool limit in MB (0 = no pooling)", "N", "8192")
+			cli.add_option_with_default ("u|budget_mb", "Collect after this many MB of new tensor memory", "N", "512")
 			cli.add_option_with_default ("m|micro", "Micro-batches per step (gradients merged; same update, less memory)", "N", "2")
 			cli.add_option_with_default ("f|profile", "Profile N training steps on the GPU, print the kernel table, then stop (0 = train)", "N", "0")
 			cli.parse
@@ -52,9 +53,9 @@ feature {NONE} -- Initialization
 					create f.make
 				else
 					create f.make_with_backend (create {VULKAN_BACKEND}.make)
-					storage_budget.set_budget (2 * 1024 * 1024 * 1024)
+					storage_budget.set_budget (cli.integer_option_or_default ("budget_mb", 512).to_integer_64 * 1024 * 1024)
 					if attached {VULKAN_BACKEND} f.backend as v then
-						v.context.set_pool_limit (cli.integer_option_or_default ("pool_mb", 1024).to_integer_64 * 1024 * 1024)
+						v.context.set_pool_limit (cli.integer_option_or_default ("pool_mb", 8192).to_integer_64 * 1024 * 1024)
 					end
 				end
 				create corpus.make (f, cli.option_value_or_default ("data", ""))
@@ -72,6 +73,15 @@ feature {NONE} -- Initialization
 					else
 						train (f, corpus, cfg, cli.option_value_or_default ("out", "eiffel_ckpt.bin"))
 					end
+				end
+			end
+		rescue
+				-- Put the failure in the training log (stdout), not only on stderr.
+			if attached (create {EXCEPTION_MANAGER}).last_exception as e then
+				print ("[fatal] " + e.generating_type.name.to_string_8 + ": "
+					+ if attached e.description as d then d.to_string_8 else "" end + "%N")
+				if attached e.trace as tr then
+					print (tr.to_string_8 + "%N")
 				end
 			end
 		end
@@ -189,6 +199,13 @@ feature {NONE} -- Profiling
 				one_step (model, opt, l_train)
 				k := k + 1
 			end
+			t0 := now_ms
+			from k := 1 until k > n loop
+				one_step (model, opt, l_train)
+				k := k + 1
+			end
+			print ("[profile] " + n.out + " steps: " + ((now_ms - t0) // n).out + " ms per step (wall, profiling off), loss "
+				+ last_loss.out + "%N")
 			if attached {VULKAN_BACKEND} f.backend as v then
 				v.reset_profile
 				v.set_profiling (True)
